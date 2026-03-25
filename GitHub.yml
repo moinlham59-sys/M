@@ -1,0 +1,95 @@
+name: 🚀 Full Install + setup.php + 24/7 Run
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔐 Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🚀 Full Server Setup + Run setup.php
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} << 'EOF'
+
+          echo "🚀 STARTING FULL INSTALL..."
+
+          # 1. UPDATE
+          sudo apt update -y && sudo apt upgrade -y
+
+          # 2. APACHE
+          sudo apt install apache2 -y
+          sudo systemctl enable apache2
+          sudo systemctl start apache2
+
+          # 3. PHP
+          sudo apt install php8.1 php8.1-mysql php8.1-curl php8.1-json php8.1-mbstring php8.1-xml php8.1-zip -y
+
+          # 4. MYSQL
+          sudo apt install mysql-server -y
+          sudo systemctl enable mysql
+          sudo systemctl start mysql
+
+          # 5. PYTHON
+          sudo apt install python3 python3-pip -y
+
+          # 6. NODEJS
+          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+          sudo apt install nodejs -y
+
+          # 7. COMPILER
+          sudo apt install gcc g++ build-essential -y
+
+          # 8. SSL (non-interactive)
+          sudo apt install certbot python3-certbot-apache -y
+          sudo certbot --apache -d yourdomain.com --non-interactive --agree-tos -m admin@yourdomain.com || true
+
+          # 9. FIREWALL
+          sudo ufw allow 22
+          sudo ufw allow 80
+          sudo ufw allow 443
+          sudo ufw --force enable
+
+          echo "✅ INSTALL COMPLETE"
+
+          # 10. DATABASE AUTO
+          sudo mysql -e "CREATE DATABASE IF NOT EXISTS hosting_bot;"
+          sudo mysql -e "CREATE USER IF NOT EXISTS 'botuser'@'localhost' IDENTIFIED BY 'StrongPass123!';"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON hosting_bot.* TO 'botuser'@'localhost';"
+          sudo mysql -e "FLUSH PRIVILEGES;"
+
+          # 11. PERMISSIONS
+          sudo chown -R www-data:www-data /var/www/html/
+          sudo chmod -R 755 /var/www/html/
+
+          # 12. RUN setup.php (CLI MODE)
+          echo "🚀 Running setup.php..."
+          php /var/www/html/setup.php
+
+          echo "✅ setup.php DONE"
+
+          # 13. 24/7 CRON SYSTEM (important)
+          
+          # main cron
+          (crontab -l 2>/dev/null; echo "* * * * * php /var/www/html/hosting_bot/cron.php >> /dev/null 2>&1") | crontab -
+          
+          # worker cron
+          (crontab -l 2>/dev/null; echo "*/5 * * * * php /var/www/html/cron_worker.php >> /dev/null 2>&1") | crontab -
+          
+          # cleanup cron
+          (crontab -l 2>/dev/null; echo "0 * * * * php /var/www/html/cron_cleanup.php >> /dev/null 2>&1") | crontab -
+
+          echo "♻️ 24/7 Cron Jobs Activated"
+
+          # 14. RESTART
+          sudo systemctl restart apache2
+          sudo systemctl restart mysql
+
+          echo "🎉 FULL SYSTEM READY + RUNNING 24/7"
+
+          EOF
