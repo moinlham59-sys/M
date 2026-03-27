@@ -14,7 +14,7 @@ define('WEBHOOK_URL',      'http://moin.kesug.com/webhook.php');                
 
 // ── DATABASE ─────────────────────────────────────────────────
 // 'localhost' ko badal kar InfinityFree ka hostname dalein
-define('DB_HOST', 'sql312.infinityfree.com'); 
+define('DB_HOST', 'localhost');
 define('DB_NAME', 'if0_41442889_moin');
 define('DB_USER', 'if0_41442889');
 define('DB_PASS', 'qIvIoNfTAcHnF');
